@@ -95,27 +95,41 @@ window.addEventListener("DOMContentLoaded", () => {
   createFloatingElements();
 });
 
-// Create floating hearts and bears
+// Create floating hearts, bears, and roses
 function createFloatingElements() {
   const container = document.querySelector(".floating-elements");
 
   // Create hearts
   config.floatingEmojis.hearts.forEach((heart) => {
     const div = document.createElement("div");
-    div.className = "heart";
+    div.className = "heart emoji-interactive";
     div.innerHTML = heart;
     setRandomPosition(div);
+    addEmojiInteractions(div);
     container.appendChild(div);
   });
 
   // Create bears
   config.floatingEmojis.bears.forEach((bear) => {
     const div = document.createElement("div");
-    div.className = "bear";
+    div.className = "bear emoji-interactive";
     div.innerHTML = bear;
     setRandomPosition(div);
+    addEmojiInteractions(div);
     container.appendChild(div);
   });
+
+  // Create roses
+  if (config.floatingEmojis.roses) {
+    config.floatingEmojis.roses.forEach((rose) => {
+      const div = document.createElement("div");
+      div.className = "rose emoji-interactive";
+      div.innerHTML = rose;
+      setRandomPosition(div);
+      addEmojiInteractions(div);
+      container.appendChild(div);
+    });
+  }
 }
 
 // Set random position for floating elements
@@ -123,6 +137,130 @@ function setRandomPosition(element) {
   element.style.left = Math.random() * 100 + "vw";
   element.style.animationDelay = Math.random() * 5 + "s";
   element.style.animationDuration = 10 + Math.random() * 20 + "s";
+}
+
+// Global state for drag tracking
+let currentDraggedElement = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+let lastTrailTime = 0;
+const TRAIL_INTERVAL = 50; // Create trail every 50ms
+
+// Add interactive behaviors to emojis
+function addEmojiInteractions(element) {
+  // Click event - pop effect
+  element.addEventListener('click', function(e) {
+    if (!currentDraggedElement) {
+      this.classList.add('emoji-pop');
+      setTimeout(() => {
+        this.classList.remove('emoji-pop');
+      }, 300);
+    }
+  });
+  
+  // Mouse down - start dragging
+  element.addEventListener('mousedown', function(e) {
+    currentDraggedElement = this;
+    this.classList.add('dragging');
+    
+    // Get the initial position
+    const rect = this.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    
+    // Stop the floating animation
+    this.style.animation = 'none';
+    this.style.position = 'fixed';
+    
+    lastTrailTime = 0; // Reset trail timer
+    e.preventDefault();
+  });
+  
+  // Touch events for mobile
+  element.addEventListener('touchstart', function(e) {
+    currentDraggedElement = this;
+    this.classList.add('dragging');
+    
+    const rect = this.getBoundingClientRect();
+    const touch = e.touches[0];
+    dragOffsetX = touch.clientX - rect.left;
+    dragOffsetY = touch.clientY - rect.top;
+    
+    this.style.animation = 'none';
+    this.style.position = 'fixed';
+    
+    lastTrailTime = 0; // Reset trail timer
+    e.preventDefault();
+  });
+}
+
+// Global mouse move handler (added once)
+document.addEventListener('mousemove', function(e) {
+  if (currentDraggedElement) {
+    const x = e.clientX - dragOffsetX;
+    const y = e.clientY - dragOffsetY;
+    
+    currentDraggedElement.style.left = x + 'px';
+    currentDraggedElement.style.top = y + 'px';
+    
+    // Create trail effect with throttling
+    const now = Date.now();
+    if (now - lastTrailTime > TRAIL_INTERVAL) {
+      createTrail(e.clientX, e.clientY, currentDraggedElement.innerHTML);
+      lastTrailTime = now;
+    }
+  }
+});
+
+// Global mouse up handler (added once)
+document.addEventListener('mouseup', function() {
+  if (currentDraggedElement) {
+    currentDraggedElement.classList.remove('dragging');
+    currentDraggedElement = null;
+  }
+});
+
+// Global touch move handler (added once)
+document.addEventListener('touchmove', function(e) {
+  if (currentDraggedElement) {
+    const touch = e.touches[0];
+    const x = touch.clientX - dragOffsetX;
+    const y = touch.clientY - dragOffsetY;
+    
+    currentDraggedElement.style.left = x + 'px';
+    currentDraggedElement.style.top = y + 'px';
+    
+    // Create trail effect with throttling
+    const now = Date.now();
+    if (now - lastTrailTime > TRAIL_INTERVAL) {
+      createTrail(touch.clientX, touch.clientY, currentDraggedElement.innerHTML);
+      lastTrailTime = now;
+    }
+  }
+});
+
+// Global touch end handler (added once)
+document.addEventListener('touchend', function() {
+  if (currentDraggedElement) {
+    currentDraggedElement.classList.remove('dragging');
+    currentDraggedElement = null;
+  }
+});
+
+// Create trail effect when dragging
+function createTrail(x, y, emoji) {
+  const trailElement = document.createElement('div');
+  trailElement.className = 'emoji-trail';
+  trailElement.innerHTML = emoji;
+  trailElement.style.left = x + 'px';
+  trailElement.style.top = y + 'px';
+  
+  document.querySelector('.floating-elements').appendChild(trailElement);
+  
+  // Remove trail element after animation
+  setTimeout(() => {
+    trailElement.remove();
+  }, 1000);
 }
 
 // Function to show next question
